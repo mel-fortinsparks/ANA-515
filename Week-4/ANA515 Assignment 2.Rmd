@@ -1,0 +1,54 @@
+---
+title: "ANA 515 Assignment 2, Loading, Saving, and Describing Data"
+author: "Mel Sparks"
+date: "4/10/2022"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+```
+
+## Greenhouse Gas Emissions Dataset
+
+This dataset contains information regarding how many tons of greenhouse gas emissions are produced annually in the world and by country from 1990 to 2018. I’m hoping to ascertain whether greenhouse gas production has increased or decreased worldwide, as well as if any top producing countries have made progress towards decreasing their annual output. The dataset is saved in a csv, thusly the delimiter in this case is the comma. Additionally, we can open csv files in excel, which I frequently do before reading them into R so I already know approximately what they should look like.
+
+```{r ghg, echo=TRUE} 
+ghgemissions <- read.csv("C:/Users/melin/OneDrive/Desktop/Data Analytics M.S/ANA515/Week 4/ALL GHG_historical_emissions.csv")
+#I used the read.csv function because I knew the file I was using was a csv; this function should be a base R function.
+```
+
+```{r cleaning, echo=TRUE}
+#I want to drop columns I don't need; all of these columns have the same entry for all observations
+ghgdrop <- subset(ghgemissions, select = -c(Data.source, Sector,Gas,Unit))
+#Now I'll limit my data to the top producing countries, any who produced less than 1000 tons of ghg emissions in 2018
+ghgtopprod <- filter(ghgdrop, X2018>1000)
+#Having the World total is useful, but it will skew my summary statistics at the end of this, so I'll put it in it's own dataset
+ghgworld <- filter(ghgtopprod, X2018>20000)
+ghgtopprod <- filter(ghgtopprod, X2018<20000)
+#Apparently X1990 was accepted as a character class, I need to change that to integer
+ghgtopprod$X1990 <- as.integer(ghgtopprod$X1990)
+```
+
+## This dataframe has `r nrow(ghgtopprod)` rows and `r ncol(ghgtopprod)` columns. The names of the columns and a brief description of each are in the table below:
+
+```{r table, echo=TRUE}
+#this makes a new data.frame called text_tbl with two columns, Names and Description
+text_tbl <- data.frame(
+Names = c("Country", "X2018", "X2017", "...", "X1990"),
+Description = c("Specific country or world overview", "All emissions in 2018 measured in tons", "All emissions in 2017 measured in tons", "...", "All emissions in 1990 measured in tons")
+)
+text_tbl #prints the table
+```
+```{r summary, include=TRUE}
+#For the three columns, I will select the most recent year, the oldest year, and a year approximately midspaced between the two
+datapick3 <- select(ghgtopprod, X2018, X2008, X1990)
+#And now I'll produce a table with the summary statistics
+SummaryTable<-summary(datapick3)
+SummaryTable
+#Note: I accidentally picked a dataset with no missing values, so I was not able to provide a summary of that info
+```
