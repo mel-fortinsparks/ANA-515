@@ -1,0 +1,118 @@
+---
+title: "Wine Quality Prediction"
+author: "Mel Sparks"
+date: "5/6/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(knitr)
+library(corrplot)
+```
+
+## Predicting Wine Quality
+
+Winemakers want to take their vintages to the next level by using science and data analytics to get that extra edge. While many of them do not require extensive redesigns to their time-honored traditions, most would still benefit from knowing what the data has to offer so that they can continue to make informed desitions. (Item 1)
+
+```{r data retrieval, include=FALSE} 
+#I need to first pull the datasets into R 
+#I had to use read.csv2() for the first time because it's a semicolon separated df (Item 3)
+wine_red <- read.csv2("C:/Users/melin/OneDrive/Desktop/Data Analytics M.S/ANA515/ANA515 R Working Directory/winequality-red.csv")
+wine_white <- read.csv2("C:/Users/melin/OneDrive/Desktop/Data Analytics M.S/ANA515/ANA515 R Working Directory/winequality-white.csv")
+#I also want a df that is a combination of both wines, but I want to add a column to each before I do that so that I can still identify which wines are red or white
+wine_red$type <- c("red")
+wine_white$type <- c("white")
+wine_both <- rbind(wine_red,wine_white)
+```
+
+These datasets were retrieved from the University of California, Irving Machine Learning Repository. (Item 2) It contains information on wines from the year 2009 for Portugese "Vinho Verde" variety. There is information on `r nrow(wine_red)` red wines and `r nrow(wine_white)` white wines available from that year (for a total of `r nrow(wine_both)`). The data on these vintages include `r ncol(wine_both)` variables primarily regarding the chemical composition of the wines (density, pH, residual sugar, etc), and also includes an overall quality rating and a designator that I added to note if the wine was red or white. (Item 4)
+
+```{r data prep, include=FALSE} 
+#Due to the nature of the dataset(s), not a great deal of cleaning had to be done
+#Many of the columns are listed as character class instead of numeric
+wine_both$fixed.acidity <- as.numeric(wine_both$fixed.acidity)
+wine_both$volatile.acidity <- as.numeric(wine_both$volatile.acidity)
+wine_both$citric.acid <- as.numeric(wine_both$citric.acid)
+wine_both$residual.sugar <- as.numeric(wine_both$residual.sugar)
+wine_both$chlorides <- as.numeric(wine_both$chlorides)
+wine_both$free.sulfur.dioxide <- as.numeric(wine_both$free.sulfur.dioxide)
+wine_both$total.sulfur.dioxide <- as.numeric(wine_both$total.sulfur.dioxide)
+wine_both$density <- as.numeric(wine_both$density)
+wine_both$pH <- as.numeric(wine_both$pH)
+wine_both$sulphates <- as.numeric(wine_both$sulphates)
+wine_both$alcohol <- as.numeric(wine_both$alcohol)
+summary(wine_both)
+```
+
+## Data Preparation
+
+The datasets I am using have no missing values. This is likely due to the fact that each variable is a measurement that was recorded at the time it was taken. Additionally, as previously stated, I added a variable so that I could combine the two datasets and still keep track of which wines were red and white. However, when I imported the datasets, only the "quality" variable was received as "numeric". All of the variables except for the "type" variable I added should be of the numeric class. I didn't have any particular issue with the column names, so I didn't reformat any of them. I also didn't want to limit any of my data, so I deliberately made the choice to not do that. (Item 5)
+
+## Modeling
+
+One of the first things I wanted to look at were the potential correlations in the data. I'm primarily interested in correlations directly related to quality, but a general overview will help me spot relationships between the variables that could result in multicollinearity and endogeneity. (Item 6, 8)
+
+```{r correlation 1, include=FALSE}
+#I want to look at correlations in the data and I found a way that I like aesthetically speaking
+#I have to do this first part in its own code chunk with "include=FALSE" because it provides an output otherwise
+wine_notype <- subset(wine_both, select = -c(type))
+res <- cor(wine_notype)
+round(res, 2)
+#Item 7
+```
+
+```{r correlation 2, echo=FALSE,fig.align='center'}
+#And here's the actual visual (a correlogram) that I want to include
+corrplot(res, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+#Item 7
+```
+
+What we can see in this correlogram is that most of the provided qualities have little to no positive impact on the overall quality of the wine. At most, we can see that there are indications that an increase in density, quantity of chlorides, and volatile acidity have a slightly negative correlation to quality. Additionally, we can see that alcohol quantity (ABV) has a slight positive correlation with quality. (Item 7, 8)
+
+However, when we plot quality and alcohol against each other, we can't discern a clear pattern in graph; I added the regression line in case points were falling on top of each other and getting lost in the visualization. (Item 7, 8)
+
+```{r plots, echo=FALSE,results='hide',message=FALSE,fig.height=3, fig.width=7, fig.align='center'}
+ggplot(wine_both, aes(x=alcohol, y = quality)) +
+  geom_point(aes(color=type)) +
+  labs(x="Percent ABV",
+       y="Quality of Wine") +
+  geom_smooth(method=lm) +
+  ggtitle("The Impact of Alcohol Quantity on Wine Quality")
+#Item 7
+```
+
+I also noticed that the white wine dominates this scatter plot and I want to see what it looks like when the wine types are put on their own graphs.
+
+```{r plots 2, echo=FALSE,message=FALSE,fig.width=3,fig.height=4}
+#Since I already reformatted the variable classes in the wine_both df, I'm just going to recut the dfs filtering by type
+wine_red <- filter(wine_both, type=="red")
+wine_white <- filter(wine_both, type=="white")
+#Now I do individual plots
+ggplot(wine_red, aes(x=alcohol, y = quality)) +
+  geom_point() +
+  labs(x="Percent ABV",
+       y="Quality of Wine") +
+  geom_smooth(method=lm) +
+  ggtitle("ABV vs Quality (Red)") +
+  geom_density_2d()
+ggplot(wine_white, aes(x=alcohol, y = quality)) +
+  geom_point() +
+  labs(x="Percent ABV",
+       y="Quality of Wine") +
+  geom_smooth(method=lm) +
+  ggtitle("ABV vs Quality (White)") +
+  geom_density_2d()
+#Item 7
+```
+
+What we can ascertain from these two graphs is that there are a considerable number of wines in the lower ABV range that only achieve a quality rating between 5-6. Wines that came in at a 7 or 8 still have a variety of ABVs available, but do seem to lean towards the higher alcohol content when you take the high density of lower quality wines into account. (Item 6, 8)
+
+## Conclusions
+
+We can see from the very little work that has been done so far that there's a reason why wine-making is generally considered an art. Firstly, none of the recorded variables seem to have a significant impact that tells us, "If you increase *this*, you'll also increase quality." That being said, we did look at the one variable that may have some positive correlation, which was alcohol content (ABV). The higher levels of quality ratings were accompanied by generally higher alcohol contents. That being said, our data shows plenty of data points where the wine was exceptionally strong, but rated quite low.
+
+There is still room for a little more work, however, when looking at how lower values of density, chlorides, and volatile acidity could also increase overall quality rating. It may still be possible to work with these four variables in concert to help see improvements to quality ratings.
